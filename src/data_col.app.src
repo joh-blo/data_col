@@ -1,0 +1,8 @@
+%%% -*- erlang -*-
+{application,data_col,
+ [{description,"Data provider (for graphing tools)"},
+  {vsn,"%VSN%"},
+  {modules,[%MODULES%]},
+  {registered,[dc_app]},
+  {applications,[kernel,stdlib]},
+  {mod,{dc_app,[]}}]}.
