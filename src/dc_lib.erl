@@ -7,11 +7,11 @@
 
 
 read_cfg() ->
-    P1=dc_lib:get_cfg(dc_devices),
-    P2=dc_lib:get_cfg(dc_inputs),
-    P3=dc_lib:get_cfg(dc_datasources),
-    P5=[], % dc_lib:get_cfg(dc_graphs),
-    P6=dc_lib:get_cfg(dc_timeseries),
+    P1=get_cfg(dc_devices,[]),
+    P2=get_cfg(dc_inputs,[]),
+    P3=get_cfg(dc_datasources,[]),
+    P5=[], % dc_lib:get_cfg(dc_graphs,[]),
+    P6=get_cfg(dc_timeseries,[]),
     Cfg0=#dc_cfg_data{devices=[],time_series=[],input=[],datasources=[],
 		      graphs=[]},
     dc_db:process_config([P1,P2,P3,P5,P6],Cfg0).
@@ -19,6 +19,9 @@ read_cfg() ->
 
 get_cfg(Cfg) ->
     emd_cfg:get_cfg_a(?APP_NAME,Cfg).
+
+get_cfg(Cfg,Def) ->
+    emd_cfg:get_cfg_a(?APP_NAME,Cfg,Def).
 
 
 

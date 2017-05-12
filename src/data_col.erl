@@ -17,11 +17,11 @@
 %%   node(), i.e., the host we are currently running on.
 map_record(RecordType,Fields) ->
     case RecordType of
-	dc_ts ->
-	    DecFields=record_info(fields,dc_ts),
-	    Defaults=[],
-	    FieldList=emd_cfg:create_record_list(DecFields,Fields,Defaults,[]),
-	    list_to_tuple([RecordType|FieldList]);
+	%% dc_ts ->
+	%%     DecFields=record_info(fields,dc_ts),
+	%%     Defaults=[],
+	%%     FieldList=emd_cfg:create_record_list(DecFields,Fields,Defaults,[]),
+	%%     list_to_tuple([RecordType|FieldList]);
 	dc_dev ->
 	    DecFields=record_info(fields,dc_dev),
 	    Defaults=[],
