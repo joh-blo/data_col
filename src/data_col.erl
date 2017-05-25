@@ -37,7 +37,9 @@ map_record(RecordType,Fields) ->
 				     list_to_atom(N++"@"++H);
 				 [_,_] -> NodeName0
 			     end,
-			 {node,NodeName}
+			 {node,NodeName};
+		     Other ->
+			 Other
 		 end,
 	    Rec#dc_dev{type=Type};
 	dc_input ->

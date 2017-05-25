@@ -13,6 +13,7 @@
 
 %% API
 -export([start_link/1,
+	 last/1,
 	 update/2,
 	 reconfig/2
 	]).
@@ -33,8 +34,7 @@
 	  device_type,  % Device type
 	  input,        % Input
 	  poll_interval,% (ms) Interval between each poll
-	  ts,
-	  pid
+	  db
 	 }).
 
 %%%===================================================================
@@ -42,6 +42,9 @@
 %%%===================================================================
 update(Pid,V) ->
     gen_server:cast(Pid,{update,V}).
+
+last(Pid) ->
+    gen_server:call(Pid,last).
 
 
 reconfig(Pid,Cfg) ->
@@ -72,25 +75,23 @@ start_link(DSinst) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([#dc_ds{id=Id,
+init([#dc_ds{id=DSid,
 	     device=#dc_dev{type=Type},
 	     input=Input,
 	     tables=Tables,
 	     poll=PT}]) ->
 
-  io:format("~p;init    Type=~p~n Input=~p~n",[?MODULE,Type,Input]),
-  MFA=case Input#dc_input.input of
-	[#dc_in_cmd{cmd={_,M,F,A}}] ->
-	  {M,F,A}
-      end,
-  
-    circdb_manager:new(Id,{Type,MFA}),
-
-    %% Consider moving allocation/handling of multiple tables into circdb
-    %% for a single data source
-    [{H,R}]=alloc_tables(Tables,Id,[]),
-    erlang:send_after(PT,self(),{?OTP_INTERNAL_GENCAST,update}),
-    {ok, #state{id=Id,ts=H,pid=R,
+    io:format("~p;init DSid=~p Type=~p~n Input=~p~n",[?MODULE,DSid,Type,Input]),
+    CircHPid=circdb_manager:create(Tables,DSid),
+    io:format("~p;init CircHPidlibre+8=~p~n",[?MODULE,CircHPid]),
+    
+    if
+	is_integer(PT) ->
+	    erlang:send_after(PT,self(),{?OTP_INTERNAL_GENCAST,update});
+	true ->
+	    ok
+    end,
+    {ok, #state{id=DSid,db=CircHPid,
 		device_type=Type,input=Input,poll_interval=PT}}.
 
 %%--------------------------------------------------------------------
@@ -107,8 +108,8 @@ init([#dc_ds{id=Id,
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
+handle_call(last, _From, State=#state{id=DSid}) ->
+    Reply = circdb_manager:last(DSid),
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
@@ -128,6 +129,15 @@ handle_cast({reconfig,#dc_ds{device=#dc_dev{type=Type},
     {noreply, State#state{device_type=Type,
 			  input=Input,
 			  poll_interval=PT}};
+handle_cast({update,Y},State=#state{id=Id}) ->
+    %% New update was pushed to us!
+    if
+	Y==undefined ->
+	    ok;
+	true ->
+	    circdb_manager:update(Id,Y)
+    end,
+    {noreply, State};
 handle_cast(update,State=#state{id=Id,
 				device_type={node,Node},
 				input=Input,
@@ -146,8 +156,13 @@ handle_cast(update,State=#state{id=Id,
 		  Y0 -> Y0
 	      end
       end,
-%    io:format("~p:update ~p ~p:~p~n",[?MODULE,{Node,M,F,A},Id,Y]),
-    circdb_manager:update(Id,Y),
+    io:format("~p:update ~p ~p:~p~n",[?MODULE,{Node,M,F,A},Id,Y]),
+    if
+	Y==undefined ->
+	    ok;
+	true ->
+	    circdb_manager:update(Id,Y)
+    end,
     erlang:send_after(PT,self(),{?OTP_INTERNAL_GENCAST,update}),
     {noreply, State}.
 
@@ -197,19 +212,19 @@ code_change(_OldVsn, State, _Extra) ->
 %%% ----------------------------------------------------------------------------
 %% 
 %% 
-alloc_tables([],_DsId,Out) ->
-    lists:reverse(Out);
-alloc_tables([H=#dc_ts{id=TsId,interval=Interval,buckets=Buckets}|Rest],
-	     DsId,Out) ->
-    io:format("alloc_tables ~p Interval=~p Buckets=~p~n",
-	      [{DsId,TsId},Interval,Buckets]),
-  NewOut=case circdb_manager:create(DsId,Interval,Buckets) of
-	  {ok,Pid} ->
-	     [{H,Pid}|Out];
-	  {error,{already_started,Pid}} ->
-	     [{H,Pid}|Out];
-	  Error ->
-    io:format("alloc_tables ERROR ~p~n",[Error]),
-	     Out
-      end,
-    alloc_tables(Rest,DsId,NewOut).
+%% alloc_tables([],_DsId,Out) ->
+%%     lists:reverse(Out);
+%% alloc_tables([H=#dc_ts{id=TsId,interval=Interval,buckets=Buckets}|Rest],
+%% 	     DsId,Out) ->
+%%     io:format("alloc_tables ~p Interval=~p Buckets=~p~n",
+%% 	      [{DsId,TsId},Interval,Buckets]),
+%%   NewOut=case circdb_manager:create(DsId,Interval,Buckets) of
+%% 	  {ok,Pid} ->
+%% 	     [{H,Pid}|Out];
+%% 	  {error,{already_started,Pid}} ->
+%% 	     [{H,Pid}|Out];
+%% 	  Error ->
+%%     io:format("alloc_tables ERROR ~p~n",[Error]),
+%% 	     Out
+%%       end,
+%%     alloc_tables(Rest,DsId,NewOut).

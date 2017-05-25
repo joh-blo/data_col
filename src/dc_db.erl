@@ -18,7 +18,7 @@
 -export([calc_startdate/2]).
 
 %% Test
--export([gen_graph/3]).
+% -export([gen_graph/3]).
 
 %% For storing with text 
 -export([validate_cfg/2]).
@@ -164,10 +164,10 @@ remove_config_data([],_Out) ->
 remove_config_data([H|Rest],Out) ->
     NewH=case H of
 	     #dc_dev{id=Id} ->    {dc_dev,Id};
-	     #dc_ts{id=Id} ->     {dc_ts,Id};
+%	     #dc_ts{id=Id} ->     {dc_ts,Id};
 	     #dc_input{id=Id} ->  {dc_input,Id};
-	     #dc_ds{id=Id} ->     delete_rrd(H),{dc_ds,Id};
-	     #dc_graph{id=Id} ->  {dc_graph,Id}
+	     #dc_ds{id=Id} ->     delete_rrd(H),{dc_ds,Id}
+%	     #dc_graph{id=Id} ->  {dc_graph,Id}
 	 end,
     remove_config_data(Rest,[NewH|Out]).
 
@@ -194,41 +194,41 @@ validate_config_data2([H|Rest]) ->
 		    % write_db([H])
 		    ok
 	    end;
-	#dc_ts{id=Id} ->
-	    case dc_api_ts:get(Id) of
-		{ok,H} ->
-		    ok;
-		_Error ->
-		    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
-		    %% 	   validate_config_data2),
-		    % write_db([H])
-		    ok
-	    end;
+	%% #dc_ts{id=Id} ->
+	%%     case dc_api_ts:get(Id) of
+	%% 	{ok,H} ->
+	%% 	    ok;
+	%% 	_Error ->
+	%% 	    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
+	%% 	    %% 	   validate_config_data2),
+	%% 	    % write_db([H])
+	%% 	    ok
+	%%     end;
 	#dc_input{id=Id} ->
 	    validate_config_data_input(H,Id);
 	#dc_ds{input={computed,_}} ->
 	    %% Not stored in database
 	    ok;
 	#dc_ds{id=Id} ->
-	    validate_config_data_ds(H,Id);
-	#dc_graph{id=Id} ->
-	    case dc_api_graph:get(Id) of
-		{ok,H1} ->
-		    case H1#dc_graph{images=[],graphed_ts=undefined} of
-			H ->
-			    ok;
-			_Error ->
-			    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
-			    %% 	   validate_config_data2),
-			    % write_db([H])
-			    ok
-		    end;
-		_Error ->
-		    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
-		    %% 	   validate_config_data2),
-		    % write_db([H])
-		    ok
-	    end
+	    validate_config_data_ds(H,Id)
+	%% #dc_graph{id=Id} ->
+	%%     case dc_api_graph:get(Id) of
+	%% 	{ok,H1} ->
+	%% 	    case H1#dc_graph{images=[],graphed_ts=undefined} of
+	%% 		H ->
+	%% 		    ok;
+	%% 		_Error ->
+	%% 		    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
+	%% 		    %% 	   validate_config_data2),
+	%% 		    % write_db([H])
+	%% 		    ok
+	%% 	    end;
+	%% 	_Error ->
+	%% 	    %% ?debug("WARNING:Cannot find ~p in Mnesia, got ~p",[H,Error],
+	%% 	    %% 	   validate_config_data2),
+	%% 	    % write_db([H])
+	%% 	    ok
+	%%     end
     end,
     validate_config_data2(Rest).
 
@@ -332,22 +332,22 @@ add_config_data([H=#dc_dev{type=Type}|Rest],
 %		 tags=[{fm_group, cast:to_str(Type)}]},
 		 tags=[]},
     add_config_data(Rest,Cfg#dc_cfg_data{devices=[Dev|Devices]});
-add_config_data([H=#dc_ts{consolidation=Co0
-%			       xfactor=Xf0
-			       }|Rest],
-		Cfg=#dc_cfg_data{time_series=Rras}) ->
-    Co=if
-	   Co0==undefined -> ["AVERAGE","MIN","MAX"];
-	   true -> Co0
-       end,
-    %% Xf=if
-    %% 	   Xf0==undefined -> 0.5;
-    %% 	   true -> Xf0
-    %%    end,
-    Rra=H#dc_ts{consolidation=Co
-%		     xfactor=Xf
-		    },
-    add_config_data(Rest,Cfg#dc_cfg_data{time_series=[Rra|Rras]});
+%% add_config_data([H=#dc_ts{consolidation=Co0
+%% %			       xfactor=Xf0
+%% 			       }|Rest],
+%% 		Cfg=#dc_cfg_data{time_series=Rras}) ->
+%%     Co=if
+%% 	   Co0==undefined -> ["AVERAGE","MIN","MAX"];
+%% 	   true -> Co0
+%%        end,
+%%     %% Xf=if
+%%     %% 	   Xf0==undefined -> 0.5;
+%%     %% 	   true -> Xf0
+%%     %%    end,
+%%     Rra=H#dc_ts{consolidation=Co
+%% %		     xfactor=Xf
+%% 		    },
+%%     add_config_data(Rest,Cfg#dc_cfg_data{time_series=[Rra|Rras]});
 add_config_data([H=#dc_input{input={M,F,Args},
 %				 step=Step0,
 %				 heartbeat=HeartBeat0,
@@ -404,21 +404,23 @@ add_config_data([H=#dc_ds{device=DevId,input=InId}|Rest],
 		{"Device/"++integer_to_list(DevId),undefined}
 	    end,
   {N2,_In}=case lists:keysearch(InId,#dc_input.id,I) of
-	     {value,In0=#dc_input{label=N20}} ->
-	       {N20,In0};
-	     _E2 ->
-	       {"Input/"++integer_to_list(InId),undefined}
+	       {value,In0=#dc_input{label=N20}} ->
+		   {N20,In0};
+	       _E2 when is_integer(InId) ->
+		   {"Input/"++integer_to_list(InId),undefined};
+	       _E2 ->
+		   {"Provided",undefined}
 	   end,
   
     Name=N1++" "++N2,
     HDS=H#dc_ds{title=Name},
-    add_config_data(Rest,Cfg#dc_cfg_data{datasources=[HDS|Ds]});
-add_config_data([H=#dc_graph{}|Rest],
-		Cfg=#dc_cfg_data{graphs=Gr,
-				     input=I,
-				     datasources=Ds}) ->
-    Graph=gen_graph(H,I,Ds),
-    add_config_data(Rest,Cfg#dc_cfg_data{graphs=[Graph|Gr]}).
+    add_config_data(Rest,Cfg#dc_cfg_data{datasources=[HDS|Ds]}).
+%% add_config_data([H=#dc_graph{}|Rest],
+%% 		Cfg=#dc_cfg_data{graphs=Gr,
+%% 				     input=I,
+%% 				     datasources=Ds}) ->
+%%     Graph=gen_graph(H,I,Ds),
+%%     add_config_data(Rest,Cfg#dc_cfg_data{graphs=[Graph|Gr]}).
 
 
 %% FIXME!
@@ -428,41 +430,41 @@ add_config_data([H=#dc_graph{}|Rest],
 %% comp_ds
 %    {dc_graph_cdef,"cdef1",
 %     "field7,field8,+,field9,+,field10,+,field11,+,field12,ADDNAN"},
-gen_graph(Gr=#dc_graph{ds=#dc_graph_ds{plot_type=PlotType0,
-					       stack=Stack0,
-					       con_fun=CF0,
-					       data_src=DS},
-			   title=Title0},
-	  I,Ds) ->
-    CF=case CF0 of
-	   min -> "MIN";
-	   max -> "MAX";
-	   last -> "LAST";
-	   _ -> "AVERAGE"
-       end,
-    PlotType=case PlotType0 of
-		 {line,W} when is_integer(W);is_float(W) -> PlotType0;
-		 area -> PlotType0;
-		 _ -> {line,1.5}
-	     end,
-    Stack=case Stack0 of
-	      true -> Stack0;
-	      _ -> false
-	  end,
-    {FieldData,Title1,DevId}=gen_graph_fields(DS,I,Ds,[],[],undefined),
-    Title=if
-	      is_list(Title0) -> Title0;
-	      true -> Title1
-	  end,
-    {Defs,Items}=gen_graph_items(FieldData,PlotType,Stack,CF,1,[],[],[]),
-    Gr#dc_graph{title=Title,
-		    description=Title,
-		    ds=Defs,
-		    item=Items,
-		    displayId=DevId, % Replace with display Id later
-		    images=[],
-		    ttl=?GRAPH_TTL,
-		    opt=[]}.
+%% gen_graph(Gr=#dc_graph{ds=#dc_graph_ds{plot_type=PlotType0,
+%% 					       stack=Stack0,
+%% 					       con_fun=CF0,
+%% 					       data_src=DS},
+%% 			   title=Title0},
+%% 	  I,Ds) ->
+%%     CF=case CF0 of
+%% 	   min -> "MIN";
+%% 	   max -> "MAX";
+%% 	   last -> "LAST";
+%% 	   _ -> "AVERAGE"
+%%        end,
+%%     PlotType=case PlotType0 of
+%% 		 {line,W} when is_integer(W);is_float(W) -> PlotType0;
+%% 		 area -> PlotType0;
+%% 		 _ -> {line,1.5}
+%% 	     end,
+%%     Stack=case Stack0 of
+%% 	      true -> Stack0;
+%% 	      _ -> false
+%% 	  end,
+%%     {FieldData,Title1,DevId}=gen_graph_fields(DS,I,Ds,[],[],undefined),
+%%     Title=if
+%% 	      is_list(Title0) -> Title0;
+%% 	      true -> Title1
+%% 	  end,
+%%     {Defs,Items}=gen_graph_items(FieldData,PlotType,Stack,CF,1,[],[],[]),
+%%     Gr#dc_graph{title=Title,
+%% 		    description=Title,
+%% 		    ds=Defs,
+%% 		    item=Items,
+%% 		    displayId=DevId, % Replace with display Id later
+%% 		    images=[],
+%% 		    ttl=?GRAPH_TTL,
+%% 		    opt=[]}.
 
 %% Generates a "graph_item" for each counter etc that should be visible in the
 %% graph. Returns a tuple {FieldData,Title,MenuTitle,InvDefs} where
@@ -514,10 +516,10 @@ gen_graph_fields([H|Rest],I,Ds,FieldData,Title,MenuTitle) ->
 			       _ -> MenuTitle
 			   end,
 		VDef0=case lists:keysearch(InId,#dc_input.id,I) of
-			  {value,
-			   #dc_input{input=[#dc_in_cmd{field=F0}]}} ->
-			      gen_graph_fields1(F0,DsId,[]);
-%			   gen_graph_fields1(F0,DsId,[],[]);
+%% 			  {value,
+%% 			   #dc_input{input=[#dc_in_cmd{field=F0}]}} ->
+%% 			      gen_graph_fields1(F0,DsId,[]);
+%% %			   gen_graph_fields1(F0,DsId,[],[]);
 			  _ ->
 			      %% ?debug("~p not a defined input",[InId],
 			      %% 	     gen_graph_fields),
@@ -528,38 +530,40 @@ gen_graph_fields([H|Rest],I,Ds,FieldData,Title,MenuTitle) ->
 		%% ?debug("~p not a defined datasource",[DsId],gen_graph_fields),
 		throw({error,unknown_datasource})
 	end,
-    FD0=gen_graph_fields3(IDefs,Opts1,[]),
-    FD1=gen_graph_fields2(VDefs,DsId,DsIdSub,Opts1,0,[]),
+%%    FD0=gen_graph_fields3(IDefs,Opts1,[]),
+%%    FD1=gen_graph_fields2(VDefs,DsId,DsIdSub,Opts1,0,[]),
+    FD0=[],
+    FD1=[],
     gen_graph_fields(Rest,I,Ds,FieldData++FD0++FD1,Title++T,NewMenuTitle).
 
 
 %% Create list with #dc_graph_def{} from #dc_input{}
 %% Note:
 %% - The UID must later be replaced with a proper reference ("fXX")
-gen_graph_fields1([],_DsId,Out) ->
-    lists:reverse(Out);
-gen_graph_fields1([H=#dc_in_cmd_field{uid=UID}|Rest],DsId,Out) ->
-    Def=#dc_graph_def{ds=DsId,field=UID},
-    gen_graph_fields1(Rest,DsId,[{Def,H}|Out]).
+%% gen_graph_fields1([],_DsId,Out) ->
+%%     lists:reverse(Out);
+%% gen_graph_fields1([H=#dc_in_cmd_field{uid=UID}|Rest],DsId,Out) ->
+%%     Def=#dc_graph_def{ds=DsId,field=UID},
+%%     gen_graph_fields1(Rest,DsId,[{Def,H}|Out]).
 
 
 %% Add title and dsid to the option list for each data source reference
 %% 
-gen_graph_fields2([],_DsId,_DsIdSub,_Opt,_N,Out) ->
-    lists:reverse(Out);
-gen_graph_fields2([{Def,#dc_in_cmd_field{title=FieldLabel}}|Rest],
-		  DsId,DsIdSub,Opt,N,Out) ->
-    NewOut=if
-	       is_integer(DsIdSub),DsIdSub=/=N ->
-		   Out;
-	       true ->
-		   NewOpt=case proplists:get_value(label,Opt) of
-			      undefined -> [{label,FieldLabel},{dsid,DsId}|Opt];
-			      _ ->         [{dsid,DsId}|Opt]
-			  end,
-		   [{Def,NewOpt}|Out]
-	   end,
-    gen_graph_fields2(Rest,DsId,DsIdSub,Opt,N+1,NewOut).
+%% gen_graph_fields2([],_DsId,_DsIdSub,_Opt,_N,Out) ->
+%%     lists:reverse(Out);
+%% gen_graph_fields2([{Def,#dc_in_cmd_field{title=FieldLabel}}|Rest],
+%% 		  DsId,DsIdSub,Opt,N,Out) ->
+%%     NewOut=if
+%% 	       is_integer(DsIdSub),DsIdSub=/=N ->
+%% 		   Out;
+%% 	       true ->
+%% 		   NewOpt=case proplists:get_value(label,Opt) of
+%% 			      undefined -> [{label,FieldLabel},{dsid,DsId}|Opt];
+%% 			      _ ->         [{dsid,DsId}|Opt]
+%% 			  end,
+%% 		   [{Def,NewOpt}|Out]
+%% 	   end,
+%%     gen_graph_fields2(Rest,DsId,DsIdSub,Opt,N+1,NewOut).
 
 gen_graph_fields3([],_Opts,Out) ->
     lists:reverse(Out);
@@ -571,7 +575,8 @@ gen_graph_fields3([H|Rest],Opts,Out) ->
 %% gen_cdef_cmd(RawCmd,Fields,CmdsOut,CurrentFieldN,Ndb,InvisbleDefsOut) ->
 %%    {CDefs,NextCurrentFieldN,InvisbleDefsOut}
 gen_cdef_cmd([],_Fields,CmdsOut,_Ndb,InvDefs) ->
-    CDefs=gen_cdef_cmd1(CmdsOut,[]),
+%    CDefs=gen_cdef_cmd1(CmdsOut,[]),
+    CDefs=[],
     {CDefs,InvDefs};
 %    {CmdsOut,InvDefs};
 gen_cdef_cmd([Op|Rest],Fields,CmdsOut,Ndb,InvDefs)
@@ -600,18 +605,18 @@ gen_cdef_cmd([Op|Rest],Fields,CmdsOut,Ndb,InvDefs) ->
 			    {0,[{DsId,0}|Ndb]};
 			OldFN ->
 			    {OldFN+1,lists:keyreplace(DsId,1,Ndb,{DsId,OldFN+1})}
-		    end,
-		case gen_cdef_cmd_lookup(Fields,DsId,[]) of
-		    [] ->
-			%% This data source is invisble in this graph
-			IDef=#dc_graph_def{ds=DsId,
-					       field=0
-%					       field="f0"++cast:to_str(FN)
-					      },
-			{[IDef],[{IDef,DsId}|InvDefs],Ndb2};
-		    DefList ->
-			{DefList,InvDefs,Ndb2}
-		end;
+		    end;
+		%% case gen_cdef_cmd_lookup(Fields,DsId,[]) of
+%% 		    [] ->
+%% 			%% This data source is invisble in this graph
+%% 			IDef=#dc_graph_def{ds=DsId,
+%% 					       field=0
+%% %					       field="f0"++cast:to_str(FN)
+%% 					      },
+%% 			{[IDef],[{IDef,DsId}|InvDefs],Ndb2};
+		%%     DefList ->
+		%% 	{DefList,InvDefs,Ndb2}
+		%% end;
 	    {ds,DsId,DsIdsub} ->
 		{_FN,Ndb2}=
 		    case proplists:get_value(DsId,Ndb) of
@@ -619,17 +624,18 @@ gen_cdef_cmd([Op|Rest],Fields,CmdsOut,Ndb,InvDefs) ->
 			    {0,[{DsId,0}|Ndb]};
 			OldFN ->
 			    {OldFN+1,lists:keyreplace(DsId,1,Ndb,{DsId,OldFN+1})}
-		    end,
-		case gen_cdef_cmd_lookup(Fields,DsId,[]) of
-		    [] ->
-			%% This data source is invisble in this graph
-			IDef=#dc_graph_def{ds=DsId,
-					       field=DsIdsub
-					      },
-			{{DsId,DsIdsub},[IDef|InvDefs],Ndb2};
-		    _DefList ->
-			{{DsId,DsIdsub},InvDefs,Ndb2}
-		end
+		    end
+%%	    ->
+%%		case gen_cdef_cmd_lookup(Fields,DsId,[]) of
+		    %% [] ->
+		    %% 	%% This data source is invisble in this graph
+		    %% 	IDef=#dc_graph_def{ds=DsId,
+		    %% 			       field=DsIdsub
+		    %% 			      },
+		    %% 	{{DsId,DsIdsub},[IDef|InvDefs],Ndb2};
+		%%     _DefList ->
+		%% 	{{DsId,DsIdsub},InvDefs,Ndb2}
+		%% end
 		    
 	end,
     NewCmdsOut=gen_cdef_cmd_merge(CmdsOut,NewOp,Rest,[]),
@@ -638,10 +644,10 @@ gen_cdef_cmd([Op|Rest],Fields,CmdsOut,Ndb,InvDefs) ->
 %% Create lists 
 gen_cdef_cmd_merge([],_Op,_RestOp,Out) ->
     lists:reverse(Out);
-gen_cdef_cmd_merge([CmdOut|Rest],Op=[D|_],RestOp,Out) 
-  when is_record(D,dc_graph_def) ->
-    NewOut=gen_cdef_cmd_merge1(Op,CmdOut,RestOp,Out),
-    gen_cdef_cmd_merge(Rest,Op,RestOp,NewOut);
+%% gen_cdef_cmd_merge([CmdOut|Rest],Op=[D|_],RestOp,Out) 
+%%   when is_record(D,dc_graph_def) ->
+%%     NewOut=gen_cdef_cmd_merge1(Op,CmdOut,RestOp,Out),
+%%     gen_cdef_cmd_merge(Rest,Op,RestOp,NewOut);
 gen_cdef_cmd_merge([CmdOut|Rest],Op,RestOp,Out) ->
     NewCmdOut=case RestOp of
 		  [] -> [Op|CmdOut];
@@ -653,15 +659,15 @@ gen_cdef_cmd_merge([CmdOut|Rest],Op,RestOp,Out) ->
 %% Generate CDEF commands (#dc_graph_cdef{}) for all elements in
 %% CmdOut. 
 %% Note that vector data generates several Cmd's.
-gen_cdef_cmd_merge1([],_CmdOut,_RestOp,Out) ->
-    CDef=#dc_graph_cdef{cmd=lists:reverse(Out)},
-    {CDef,#dc_in_cmd_field{}};
-gen_cdef_cmd_merge1([#dc_graph_def{id=Id}|Rest],CmdOut,RestOp,Out) ->
-    NewCmdOut=case RestOp of
-		  [] -> [Id|CmdOut];
-		  _ ->  [",",Id|CmdOut]
-	      end,
-    gen_cdef_cmd_merge1(Rest,CmdOut,RestOp,[NewCmdOut|Out]);
+%% gen_cdef_cmd_merge1([],_CmdOut,_RestOp,Out) ->
+%%     CDef=#dc_graph_cdef{cmd=lists:reverse(Out)},
+%%     {CDef,#dc_in_cmd_field{}};
+%% gen_cdef_cmd_merge1([#dc_graph_def{id=Id}|Rest],CmdOut,RestOp,Out) ->
+%%     NewCmdOut=case RestOp of
+%% 		  [] -> [Id|CmdOut];
+%% 		  _ ->  [",",Id|CmdOut]
+%% 	      end,
+%%     gen_cdef_cmd_merge1(Rest,CmdOut,RestOp,[NewCmdOut|Out]);
 gen_cdef_cmd_merge1([Id|Rest],CmdOut,RestOp,Out) ->
     NewCmdOut=case RestOp of
 		  [] -> [Id|CmdOut];
@@ -675,74 +681,74 @@ gen_cdef_cmd_merge1([Id|Rest],CmdOut,RestOp,Out) ->
 %% -We are dealing with vector data and operators are applied on vectors.
 %%  A CmdOut thus holds all operations applied on an element on those vectors.
 %% -Wait with instantiating references to other fields.
-gen_cdef_cmd1([],Out) ->
-    lists:reverse(Out);
-gen_cdef_cmd1([CmdOut|Rest],Out) ->
-    CDef=#dc_graph_cdef{cmd=lists:reverse(CmdOut)},
-    H={CDef,#dc_in_cmd_field{}},
-    gen_cdef_cmd1(Rest,[H|Out]).
+%% gen_cdef_cmd1([],Out) ->
+%%     lists:reverse(Out);
+%% gen_cdef_cmd1([CmdOut|Rest],Out) ->
+%%     CDef=#dc_graph_cdef{cmd=lists:reverse(CmdOut)},
+%%     H={CDef,#dc_in_cmd_field{}},
+%%     gen_cdef_cmd1(Rest,[H|Out]).
 
 
-gen_cdef_cmd_lookup([],_DsId,Out) ->
-    lists:reverse(Out);
-gen_cdef_cmd_lookup([{D=#dc_graph_def{ds=DsId},_}|Rest],DsId,Out) ->
-    gen_cdef_cmd_lookup(Rest,DsId,[D|Out]);
-gen_cdef_cmd_lookup([_|Rest],DsId,Out) ->
-    gen_cdef_cmd_lookup(Rest,DsId,Out).
+%% gen_cdef_cmd_lookup([],_DsId,Out) ->
+%%     lists:reverse(Out);
+%% gen_cdef_cmd_lookup([{D=#dc_graph_def{ds=DsId},_}|Rest],DsId,Out) ->
+%%     gen_cdef_cmd_lookup(Rest,DsId,[D|Out]);
+%% gen_cdef_cmd_lookup([_|Rest],DsId,Out) ->
+%%     gen_cdef_cmd_lookup(Rest,DsId,Out).
 
 
 
-gen_graph_items([],_PlotType,_Stack,_CF,_N,_Ndb,Defs,Items) ->
-    {lists:reverse(Defs),lists:reverse(Items)};
-gen_graph_items([{Def0,Opts}|Rest],PlotType,Stack0,CF,N,Ndb,Defs,Items)
-  when is_integer(N) ->
-    Color=case proplists:get_value(color,Opts) of
-	      [A10,A2,B10,B2,C10,C2] ->
-		  %% A1=(to_hex((to_int(A10)+3*N) rem 16)),
-		  %% B1=(to_hex((to_int(B10)+3*N) rem 16)),
-		  %% C1=(to_hex((to_int(C10)+3*N) rem 16)),
-		  %% [A1,A2,B1,B2,C1,C2];
-		  [A10,A2,B10,B2,C10,C2];
-	      _ ->
-		  lists:nth((N rem length(?DEFAULT_COLOR))+1,?DEFAULT_COLOR)	
-	  end,
-    Stack=case proplists:get_value(stack,Opts) of
-	      Stack1 when Stack1==false,Stack1==true ->
-		  Stack1;
-	      _ ->
-		  Stack0
-	  end,
-    Title=proplists:get_value(label,Opts),
-    FieldTitle="field"++integer_to_list(N),
-    {Def,DSref}=
-	case Def0 of
-	    #dc_graph_def{ds=DsId,field=DsIdSub} when is_atom(DsIdSub) ->
-		{Def0#dc_graph_def{id=FieldTitle,
-				   field="f0"++atom_to_list(DsIdSub),
-				   cf=CF,
-				   step=0},
-		 {DsId,DsIdSub}};
-	    #dc_graph_cdef{cmd=Cmd0} ->
-		Cmd=update_cdef_cmd(Cmd0,Ndb,[]),
-		{Def0#dc_graph_cdef{id=FieldTitle,
-					cmd=Cmd},
-		 cdef}
-	end,
-    NewItems=case proplists:get_value(invisible,Opts) of
-		 true ->
-		     Items;
-		 _ ->
-		     Item=#dc_graph_item{field=FieldTitle,
-					     title=Title,
-					     color=Color,
-					     type=PlotType,  % {line,1.5},
-					     visible=true,
-					     stack=Stack  % false
-					    },
-		     [Item|Items]
-	     end,
-    NewNdb=[{DSref,FieldTitle}|Ndb],
-    gen_graph_items(Rest,PlotType,Stack,CF,N+1,NewNdb,[Def|Defs],NewItems).
+%% gen_graph_items([],_PlotType,_Stack,_CF,_N,_Ndb,Defs,Items) ->
+%%     {lists:reverse(Defs),lists:reverse(Items)};
+%% gen_graph_items([{Def0,Opts}|Rest],PlotType,Stack0,CF,N,Ndb,Defs,Items)
+%%   when is_integer(N) ->
+%%     Color=case proplists:get_value(color,Opts) of
+%% 	      [A10,A2,B10,B2,C10,C2] ->
+%% 		  %% A1=(to_hex((to_int(A10)+3*N) rem 16)),
+%% 		  %% B1=(to_hex((to_int(B10)+3*N) rem 16)),
+%% 		  %% C1=(to_hex((to_int(C10)+3*N) rem 16)),
+%% 		  %% [A1,A2,B1,B2,C1,C2];
+%% 		  [A10,A2,B10,B2,C10,C2];
+%% 	      _ ->
+%% 		  lists:nth((N rem length(?DEFAULT_COLOR))+1,?DEFAULT_COLOR)	
+%% 	  end,
+%%     Stack=case proplists:get_value(stack,Opts) of
+%% 	      Stack1 when Stack1==false,Stack1==true ->
+%% 		  Stack1;
+%% 	      _ ->
+%% 		  Stack0
+%% 	  end,
+%%     Title=proplists:get_value(label,Opts),
+%%     FieldTitle="field"++integer_to_list(N),
+%%     {Def,DSref}=
+%% 	case Def0 of
+%% 	    #dc_graph_def{ds=DsId,field=DsIdSub} when is_atom(DsIdSub) ->
+%% 		{Def0#dc_graph_def{id=FieldTitle,
+%% 				   field="f0"++atom_to_list(DsIdSub),
+%% 				   cf=CF,
+%% 				   step=0},
+%% 		 {DsId,DsIdSub}};
+%% 	    #dc_graph_cdef{cmd=Cmd0} ->
+%% 		Cmd=update_cdef_cmd(Cmd0,Ndb,[]),
+%% 		{Def0#dc_graph_cdef{id=FieldTitle,
+%% 					cmd=Cmd},
+%% 		 cdef}
+%% 	end,
+%%     NewItems=case proplists:get_value(invisible,Opts) of
+%% 		 true ->
+%% 		     Items;
+%% 		 _ ->
+%% 		     Item=#dc_graph_item{field=FieldTitle,
+%% 					     title=Title,
+%% 					     color=Color,
+%% 					     type=PlotType,  % {line,1.5},
+%% 					     visible=true,
+%% 					     stack=Stack  % false
+%% 					    },
+%% 		     [Item|Items]
+%% 	     end,
+%%     NewNdb=[{DSref,FieldTitle}|Ndb],
+%%     gen_graph_items(Rest,PlotType,Stack,CF,N+1,NewNdb,[Def|Defs],NewItems).
 
 update_cdef_cmd([],_Ndb,Out) ->
     lists:reverse(Out);
@@ -840,10 +846,10 @@ diff_config([H|Rest],Old,Remove,Add,Keep) ->
 		       lists:keydelete(Id,#dc_input.id,Old)};
 		  #dc_ds{id=Id} -> 
 		      {lists:keysearch(Id,#dc_ds.id,Old),
-		       lists:keydelete(Id,#dc_ds.id,Old)};
-		  #dc_graph{id=Id} -> 
-		      {lists:keysearch(Id,#dc_graph.id,Old),
-		       lists:keydelete(Id,#dc_graph.id,Old)}
+		       lists:keydelete(Id,#dc_ds.id,Old)}
+		  %% #dc_graph{id=Id} -> 
+		  %%     {lists:keysearch(Id,#dc_graph.id,Old),
+		  %%      lists:keydelete(Id,#dc_graph.id,Old)}
 	      end,
     case Res of
 	{value,H} ->
@@ -956,14 +962,14 @@ process_config([H=#dc_dev{type=Type}|Rest],
 		 access=[rpc],
 		 tags=[]},
     process_config(Rest,Cfg#dc_cfg_data{devices=[Dev|Devices]});
-process_config([H=#dc_ts{consolidation=Co0}|Rest],
-	       Cfg=#dc_cfg_data{time_series=Rras}) ->
-    Co=if
-	   Co0==undefined -> ["AVERAGE","MIN","MAX"];
-	   true -> Co0
-       end,
-    Rra=H#dc_ts{consolidation=Co},
-    process_config(Rest,Cfg#dc_cfg_data{time_series=[Rra|Rras]});
+%% process_config([H=#dc_ts{consolidation=Co0}|Rest],
+%% 	       Cfg=#dc_cfg_data{time_series=Rras}) ->
+%%     Co=if
+%% 	   Co0==undefined -> ["AVERAGE","MIN","MAX"];
+%% 	   true -> Co0
+%%        end,
+%%     Rra=H#dc_ts{consolidation=Co},
+%%     process_config(Rest,Cfg#dc_cfg_data{time_series=[Rra|Rras]});
 process_config([H=#dc_input{input={M,F,Args},
 			    label=Label0,
 			    opt=Opt0}|Rest],
@@ -1007,17 +1013,19 @@ process_config([H=#dc_ds{device=DevId,input=InId}|Rest],
     {N2,_In}=case lists:keysearch(InId,#dc_input.id,I) of
 		 {value,In0=#dc_input{label=N20}} ->
 		     {N20,In0};
+		 _E2 when is_integer(InId) ->
+		     {"Input/"++integer_to_list(InId),undefined};
 		 _E2 ->
-		     {"Input/"++integer_to_list(InId),undefined}
+		     {"Provided",undefined}
 	     end,
 
     Name=N1++" "++N2,
     HDS=H#dc_ds{title=Name},
-    process_config(Rest,Cfg#dc_cfg_data{datasources=[HDS|Ds]});
-process_config([H=#dc_graph{}|Rest],
-		Cfg=#dc_cfg_data{graphs=Gr,
-				     input=I,
-				     datasources=Ds}) ->
-    Graph=gen_graph(H,I,Ds),
-    process_config(Rest,Cfg#dc_cfg_data{graphs=[Graph|Gr]}).
+    process_config(Rest,Cfg#dc_cfg_data{datasources=[HDS|Ds]}).
+%% process_config([H=#dc_graph{}|Rest],
+%% 		Cfg=#dc_cfg_data{graphs=Gr,
+%% 				     input=I,
+%% 				     datasources=Ds}) ->
+%%     Graph=gen_graph(H,I,Ds),
+%%     process_config(Rest,Cfg#dc_cfg_data{graphs=[Graph|Gr]}).
 
